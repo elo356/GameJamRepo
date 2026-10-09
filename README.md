@@ -18,3 +18,4 @@
 * missions and objetives?? (no importante pero seria cool)
 * cute scene
 * minimapa
+* procedural generation
