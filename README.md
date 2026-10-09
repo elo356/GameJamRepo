@@ -17,3 +17,4 @@
 * game over screen
 * missions and objetives?? (no importante pero seria cool)
 * cute scene
+* minimapa
