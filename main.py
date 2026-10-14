@@ -2,6 +2,7 @@ from ursina import *
 from ursina.prefabs.first_person_controller import FirstPersonController
 
 from supermercado import INICIO_JUGADOR, asset_path, construir_supermercado
+from bullets import Bullet
 
 
 class Player(Entity):
@@ -23,6 +24,10 @@ class Player(Entity):
     def input(self, key):
         if key == "left mouse down":
             self.disparar()
+            bullet = Bullet(position=self.controller.position + self.controller.forward + Vec3(0, 1, 0),
+                            direction=camera.forward + Vec3(0, 0.1, 0),
+                            speed=20)
+
 
     def disparar(self):
         if self.disparando:
