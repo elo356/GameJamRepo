@@ -5,6 +5,8 @@ from supermercado import INICIO_JUGADOR, asset_path, construir_supermercado
 from bullets import Bullet
 
 
+
+
 class Player(Entity):
     def __init__(self, **kwargs):
         self.controller = FirstPersonController(**kwargs)
@@ -20,6 +22,7 @@ class Player(Entity):
                           scale=(0.68, 0.6),
                           position=(0.1, -0.2),
                           )
+        
 
     def input(self, key):
         if key == "left mouse down":
@@ -27,6 +30,15 @@ class Player(Entity):
             bullet = Bullet(position=self.controller.position + self.controller.forward + Vec3(0, 1, 0),
                             direction=camera.forward + Vec3(0, 0.1, 0),
                             speed=20)
+            sound = Audio( "shot_sound.wav", autoplay=False, loop=False, volume=0.5)
+            sound.play()
+            
+        # elif key == "p" and not application.paused:
+        #     application.paused = not application.paused
+        # elif key == "p" and application.paused:
+        #     application.paused = not application.paused
+        elif key == "escape":
+            application.quit()
 
 
     def disparar(self):
@@ -42,6 +54,7 @@ class Player(Entity):
     def terminar_disparo(self):
         self.gun.texture = self.frames_pistola[0]
         self.disparando = False
+
 
 
 def main():
