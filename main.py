@@ -9,7 +9,7 @@ class Player(Entity):
         self.controller = FirstPersonController(**kwargs)
         super().__init__(parent=self.controller)
 
-        self.frames_pistola = [Texture(asset_path(f"pist_{i}.png"), filtering=None)
+        self.frames_pistola = [Texture(asset_path("weapons", f"pist_{i}.png"), filtering=None)
                                for i in range(4)]
         self.disparando = False
 

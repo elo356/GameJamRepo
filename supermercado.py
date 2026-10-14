@@ -14,14 +14,9 @@ ROOT = Path(__file__).resolve().parent
 def asset_path(*parts):
     filename = Path(*parts)
     candidates = [
-        ROOT / filename,
         ROOT / "images" / filename,
-        ROOT / "textures" / filename.name,
-        ROOT / "images" / "textures" / filename.name,
+        ROOT / filename,
     ]
-
-    if len(parts) == 1:
-        candidates.insert(2, ROOT / "images" / filename.name)
 
     for candidate in candidates:
         if candidate.exists():
@@ -31,7 +26,7 @@ def asset_path(*parts):
 
 
 def textura(nombre):
-    path = asset_path(f"{nombre}.png")
+    path = asset_path("environment", f"{nombre}.png")
     if not Path(path).exists():
         raise FileNotFoundError(f"Texture not found: {path}")
     return Texture(path, filtering=None)
