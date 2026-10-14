@@ -16,8 +16,8 @@ class Player(Entity):
         self.gun = Entity(parent=camera.ui,
                           model="quad",
                           texture=self.frames_pistola[0],
-                          scale=(0.3, 0.22),
-                          position=(0.08, -0.04),
+                          scale=(0.68, 0.6),
+                          position=(0.1, -0.2),
                           )
 
     def input(self, key):
@@ -48,6 +48,8 @@ def main():
 
     player = Player(position=INICIO_JUGADOR)
 
+    window.update_aspect_ratio()
+  
     app.run()
 
 
