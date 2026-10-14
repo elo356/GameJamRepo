@@ -16,8 +16,9 @@ class Player(Entity):
         self.gun = Entity(parent=camera.ui,
                           model="quad",
                           texture=self.frames_pistola[0],
-                          scale=(0.68, 0.6),
-                          position=(0.05, -0.2))
+                          scale=(0.3, 0.22),
+                          position=(0.08, -0.04),
+                          )
 
     def input(self, key):
         if key == "left mouse down":
