@@ -3,11 +3,31 @@ from ursina.prefabs.first_person_controller import FirstPersonController
 
 from supermercado import INICIO_JUGADOR, asset_path, construir_supermercado
 from bullets import Bullet
+# from menu import Menu
 
 
+class PauseHandler(Entity):
+    def __init__(self, **kwargs):
+        super().__init__(ignore_paused=True, **kwargs)
+        self.pause_text = Text('PAUSED', origin=(0, -1), scale=3, enabled=False, color = color.red, font='VeraMono.ttf')
+        self.instrucctions_text = Text("Press 'P' to unpause", origin = (0,2), scale =2, enabled = False, color=color.red, font = 'VeraMono.ttf')
 
+    def input(self, key):
+        if key == "p" or key == "P":
+            application.paused = not application.paused
+            self.pause_text.enabled = application.paused
+            self.instrucctions_text.enabled = application.paused
+        elif key == "escape":
+            if application.paused:
+                application.quit()
+            else:
+                application.paused = True
+                self.pause_text.enabled = True
+                self.instrucctions_text.enabled = True
 
 class Player(Entity):
+
+
     def __init__(self, **kwargs):
         self.controller = FirstPersonController(**kwargs)
         super().__init__(parent=self.controller)
@@ -25,6 +45,7 @@ class Player(Entity):
         
 
     def input(self, key):
+
         if key == "left mouse down":
             self.disparar()
             bullet = Bullet(position=self.controller.position + self.controller.forward + Vec3(0, 1, 0),
@@ -32,13 +53,13 @@ class Player(Entity):
                             speed=20)
             sound = Audio( "shot_sound.wav", autoplay=False, loop=False, volume=0.5)
             sound.play()
+
             
-        # elif key == "p" and not application.paused:
-        #     application.paused = not application.paused
-        # elif key == "p" and application.paused:
-        #     application.paused = not application.paused
+      
         elif key == "escape":
             application.quit()
+        # elif Menu.enabled and (key == "Enter" or key == "return"):
+        #     Menu.start_game()
 
 
     def disparar(self):
@@ -58,7 +79,9 @@ class Player(Entity):
 
 
 def main():
-    app = Ursina(title=" After Hours", size=(1280, 720))
+    app = Ursina(title=" After Hours", size=(1280, 720), origin=(0, 0))
+
+   
 
     construir_supermercado()
 
@@ -67,6 +90,10 @@ def main():
     player = Player(position=INICIO_JUGADOR)
 
     window.update_aspect_ratio()
+
+    pause_handler = PauseHandler()
+
+    # menu = Menu()
   
     app.run()
 
