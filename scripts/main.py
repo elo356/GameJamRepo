@@ -10,18 +10,16 @@ if str(ROOT) not in sys.path:
 from ursina import *
 
 from scripts.game import Game
-from scripts.world import FOG_COLOR
+from scripts.neblina import setup_rendering
 
 
 def main():
     app = Ursina(title=" After Hours", size=(1280, 720))
 
     window.editor_ui.enabled = False
-    window.color = FOG_COLOR
-
-    scene.fog_color = FOG_COLOR
 
     Game()
+    setup_rendering()
 
     window.update_aspect_ratio()
 

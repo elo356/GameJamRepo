@@ -3,6 +3,7 @@ from pathlib import Path
 
 from ursina import *
 
+from scripts.neblina import set_fog
 from scripts.supermercado import asset_path
 from scripts.world import distance_xz
 
@@ -67,7 +68,7 @@ class NightDirector(Entity):
         self.base_dark = 0.0
         self.awaken_timer = 2.0
         self.doors_open = False
-        scene.fog_density = (NIEBLA_INICIO, NIEBLA_NORMAL)
+        set_fog(NIEBLA_INICIO, NIEBLA_NORMAL)
         self.musica_noche.stop()
         self.ambiente.volume = 0.4
         self.ambiente.play()
@@ -105,7 +106,7 @@ class NightDirector(Entity):
             self.ambiente.fade_out(duration=2)
             self.musica_noche.play()
             hud.show_message("MEDIANOCHE: LA COMIDA COBRO VIDA", "Sobrevive hasta las 06:00", 4, color.rgb32(255, 90, 70))
-            scene.fog_density = (NIEBLA_INICIO / 2, NIEBLA_NOCHE)
+            set_fog(NIEBLA_INICIO / 2, NIEBLA_NOCHE)
         if self.minutes >= 360 and not self.doors_open:
             self.story = 3
             self.doors_open = True

@@ -4,6 +4,7 @@ import random
 from PIL import Image
 from ursina import *
 
+from scripts.neblina import fogify, sprite
 from scripts.supermercado import ROOT
 from scripts.world import PRODUCT_PIXEL, distance_xz
 
@@ -63,7 +64,7 @@ class Enemy:
         frames = self.stats["frames"]
         self.aspect = tex.width / (tex.height / frames)
         sleep_h = tex.height / frames * PRODUCT_PIXEL
-        self.e = Entity(model="quad", texture=tex, color=SLEEP_COLOR, billboard=True,
+        self.e = sprite(tex, color=SLEEP_COLOR,
                         texture_scale=(1, 1 / frames), texture_offset=(0, 1 - 1 / frames),
                         scale=(sleep_h * self.aspect, sleep_h),
                         position=slot["pos"] + Vec3(0, sleep_h / 2, 0))
@@ -283,7 +284,7 @@ class Projectiles(Entity):
         start = enemy.e.position + Vec3(0, enemy.size * 0.2, 0)
         target = self.game.player_pos + Vec3(0, 1.1, 0)
         direction = (target - start).normalized()
-        e = Entity(model="sphere", color=color.rgb(*enemy.tint), position=start, scale=0.14)
+        e = fogify(Entity(model="sphere", color=color.rgb(*enemy.tint), position=start, scale=0.14))
         self.items.append([e, direction * 7, enemy.stats["damage"], enemy.tint])
         self.game.sfx.play("growl", 0.25, 0.3)
 
