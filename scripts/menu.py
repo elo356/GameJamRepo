@@ -50,6 +50,5 @@ class GameOverMenu(Menu):
     def __init__(self, al_reintentar, al_menu):
         super().__init__("", [
             ("Reintentar", al_reintentar),
-            ("Menu principal", al_menu),
             ("Salir", application.quit),
-        ])
+        ]) 
