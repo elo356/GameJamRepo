@@ -53,9 +53,9 @@ class NightDirector(Entity):
         super().__init__()
         self.game = game
         self.hud = HudNoche()
-        self.ambiente = sonido("audio", "atmo-public-supermarket-calm-cooling-shelf-switching-distant-01.wav",
+        self.ambiente = sonido("atmo-public-supermarket-calm-cooling-shelf-switching-distant-01.wav",
                                loop=True, volume=0.4)
-        self.musica_noche = sonido("audio", "25. Dark Factory.wav", loop=True, volume=0.45)
+        self.musica_noche = sonido("25. Dark Factory.wav", loop=True, volume=0.45)
         self.reset()
 
     def reset(self):
