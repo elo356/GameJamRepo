@@ -6,7 +6,7 @@ from scripts.bullets import Bullet
 
 ALTURA_OJOS = 1.65
 POSICION_ARMA = Vec2(0.32, -0.3)
-VIDA_MAXIMA = 1000
+VIDA_MAXIMA = 100
 VELOCIDAD = 5
 RADIO = 0.3
 
@@ -14,8 +14,7 @@ RADIO = 0.3
 class Player(Entity):
     def __init__(self, al_disparar=None, nivel=None, **kwargs):
         self.controller = FirstPersonController(height=ALTURA_OJOS, **kwargs)
-        # El movimiento lo hace mover() con la rejilla del nivel; los raycasts del controlador
-        # dejaban al jugador meterse en las paredes por las esquinas.
+     
         self.controller.speed = 0 if nivel else 5
         self.controller.cursor.color = color.white
         self.controller.cursor.scale = 0.006

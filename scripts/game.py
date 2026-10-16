@@ -3,6 +3,7 @@ from ursina import *
 
 from scripts.effects import Effects
 from scripts.enemy import PLAYER_RADIUS, EnemyManager, Projectiles, load_enemy_assets
+from scripts.menu import GameOverMenu, MainMenu
 from scripts.night import NightDirector
 from scripts.player import Player
 from scripts.supermercado import INICIO_JUGADOR, audio_path
@@ -53,9 +54,11 @@ class Game(Entity):
         self.projectiles = Projectiles(self)
         self.player = Player(al_disparar=self.shoot, nivel=self.level, position=INICIO_JUGADOR, rotation_y=ROTACION_INICIAL)
         self.night = NightDirector(self)
-        self.state = "playing"
         self.kills = 0
         self.spawn_all()
+        self.main_menu = MainMenu(al_jugar=self.start)
+        self.game_over_menu = GameOverMenu(al_reintentar=self.start, al_menu=self.go_to_menu)
+        self.go_to_menu()
 
     @property
     def player_pos(self):
@@ -95,12 +98,27 @@ class Game(Entity):
         if not self.player.vivo:
             self.end("TE COMIERON", color.rgb32(255, 70, 60))
 
-    def end(self, titulo, col):
-        self.state = "over"
+    def freeze(self, state):
+        self.state = state
         self.night.enabled = False
         self.projectiles.enabled = False
         self.player.congelar(True)
-        self.night.hud.show_message(titulo, f"Eliminaste {self.kills} enemigos  -  Pulsa R para reintentar", 99999, col)
+        self.night.hud.show_message("", "", 0)
+
+    def end(self, titulo, col):
+        self.freeze("over")
+        self.game_over_menu.show(titulo, f"Eliminaste {self.kills} enemigos", col)
+
+    def go_to_menu(self):
+        self.game_over_menu.hide()
+        self.night.reset()
+        self.freeze("menu")
+        self.main_menu.show()
+
+    def start(self):
+        self.main_menu.hide()
+        self.game_over_menu.hide()
+        self.restart()
 
     def restart(self):
         self.enemies.clear()
@@ -118,7 +136,7 @@ class Game(Entity):
 
     def input(self, key):
         if key == "r" and self.state == "over":
-            self.restart()
+            self.start()
 
     def update(self):
         dt = time.dt
