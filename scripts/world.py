@@ -2,7 +2,7 @@ from ursina import *
 
 from scripts.supermercado import ROOT, asset_path, textura
 
-WALL_HEIGHT = 3
+WALL_HEIGHT = 6
 SHELF_HEIGHT = 2.2
 COUNTER_HEIGHT = 1.1
 SHELF_BOARDS = (0.15, 0.65, 1.15, 1.65)
