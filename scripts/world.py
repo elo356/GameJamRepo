@@ -135,9 +135,10 @@ class StoreBuilder:
         Entity(model="plane", scale=(lv.cols, 1, lv.rows), y=WALL_HEIGHT, rotation_x=180,
                texture=tex["ceiling"], texture_scale=(lv.cols / 2, lv.rows / 2), color=color.rgb32(150, 150, 150))
 
-        self._lights(lv)
+        lights = self._lights(lv)
         self._signs(lv)
-        return [Door(lv.cell_center(c, r), tex["metal_door"]) for c, r in lv.exit_cells]
+        doors = [Door(lv.cell_center(c, r), tex["metal_door"]) for c, r in lv.exit_cells]
+        return doors, lights
 
     def _block(self, mb, col, row, height, joins):
         lv = self.level
@@ -173,11 +174,13 @@ class StoreBuilder:
                     [(px - w / 2, y, z), (px + w / 2, y, z), (px + w / 2, y + h, z), (px - w / 2, y + h, z)])
 
     def _lights(self, lv):
+        lights = []
         for row in range(1, lv.rows - 1, 4):
             for col in range(2, lv.cols - 2, 3):
                 c = lv.cell_center(col, row)
-                Entity(model="quad", color=color.rgb32(235, 245, 255), position=(c.x, WALL_HEIGHT - 0.02, c.z),
-                       rotation_x=-90, scale=(1.6, 0.22), double_sided=True)
+                lights.append(Entity(model="quad", color=color.rgb32(235, 245, 255), position=(c.x, WALL_HEIGHT - 0.02, c.z),
+                                     rotation_x=-90, scale=(1.6, 0.22), double_sided=True))
+        return lights
 
     def _signs(self, lv):
         for aisle_index, row in enumerate(lv.shelf_rows):
