@@ -50,15 +50,15 @@ def main():
 
     window.update_aspect_ratio()
 
-    def start_game():
-        print("Starting game...")
-        main_menu.enabled = False
+    # def start_game():
+    #     print("Starting game...")
+    #     main_menu.enabled = False
 
-    main_menu = ButtonList({
-    "Start Game": Func(start_game),
-    "Options": Func(print, "Options opened"),
-    "Quit": Func(application.quit)
-    }, width=0.5, button_height=1.5)
+    # main_menu = ButtonList({
+    # "Start Game": Func(start_game),
+    # "Options": Func(print, "Options opened"),
+    # "Quit": Func(application.quit)
+    # }, width=0.5, button_height=1.5)
 
     app.run()
 
