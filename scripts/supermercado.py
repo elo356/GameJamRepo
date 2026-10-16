@@ -7,7 +7,7 @@ LARGO = 19
 ALTO = 3
 ALTO_CAJA = 0.9
 
-INICIO_JUGADOR = (9.5, 0, 6.5)
+INICIO_JUGADOR = (0, 0, 6.5)
 ROOT = Path(__file__).resolve().parent.parent
 
 

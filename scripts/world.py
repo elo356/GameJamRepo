@@ -5,6 +5,7 @@ from scripts.supermercado import ROOT, asset_path, textura
 WALL_HEIGHT = 6
 SHELF_HEIGHT = 2.2
 COUNTER_HEIGHT = 1.1
+SIGN_HEIGHT = 3.2
 SHELF_BOARDS = (0.15, 0.65, 1.15, 1.65)
 PRODUCT_PIXEL = 0.011
 PRODUCT_MAX_SIZE = 0.3
@@ -87,6 +88,7 @@ class Level:
         self.exit_cells = exit_cells or []
         self.shelf_rows = [r for r, row in enumerate(self.grid) if "S" in row]
         self.shelf_slots = []
+        self.exits_open = False
 
     def cell_center(self, col, row):
         return Vec3(col + 0.5 - self.cols / 2, 0, row + 0.5 - self.rows / 2)
@@ -99,20 +101,24 @@ class Level:
     def solid(self, cell):
         return cell in "#FSCE"
 
+    def blocks_player(self, cell):
+        return cell in ("#FSC" if self.exits_open else "#FSCE")
+
     def cell_at(self, x, z):
         return math.floor(x + self.cols / 2), math.floor(z + self.rows / 2)
 
-    def blocked(self, x, z, r):
+    def blocked(self, x, z, r, solid=None):
+        solid = solid or self.solid
         for cx, cz in ((x - r, z - r), (x + r, z - r), (x - r, z + r), (x + r, z + r)):
-            if self.solid(self.cell_type(*self.cell_at(cx, cz))):
+            if solid(self.cell_type(*self.cell_at(cx, cz))):
                 return True
         return False
 
-    def slide_move(self, pos, dx, dz, r):
+    def slide_move(self, pos, dx, dz, r, solid=None):
         x, z = pos[0], pos[2]
-        if not self.blocked(x + dx, z, r):
+        if not self.blocked(x + dx, z, r, solid):
             x += dx
-        if not self.blocked(x, z + dz, r):
+        if not self.blocked(x, z + dz, r, solid):
             z += dz
         return x, z
 
@@ -193,7 +199,7 @@ class StoreBuilder:
             for col in range(lv.cols):
                 ch = lv.grid[row][col]
                 if ch == "#":
-                    self._block(walls, col, row, WALL_HEIGHT, set("#FE"))
+                    self._block(walls, col, row, WALL_HEIGHT, set("#F"))
                 elif ch == "F":
                     self._block(tiles, col, row, WALL_HEIGHT, set("#F"))
                 elif ch == "S":
@@ -270,52 +276,79 @@ class StoreBuilder:
                 products.setdefault(tex, MeshBuilder()).quad(
                     [(px - w / 2, y, z), (px + w / 2, y, z), (px + w / 2, y + h, z), (px - w / 2, y + h, z)])
 
+    def _free_bands(self, lv):
+        bands, start = [], None
+        for row in range(1, lv.rows):
+            free = row < lv.rows - 1 and "S" not in lv.grid[row]
+            if free and start is None:
+                start = row
+            elif not free and start is not None:
+                bands.append((start, row - 1))
+                start = None
+        return bands
+
     def _lights(self, lv):
         lights = []
-        for row in range(1, lv.rows - 1, 4):
+        for r0, r1 in self._free_bands(lv):
+            z = (lv.cell_center(0, r0).z + lv.cell_center(0, r1).z) / 2
             for col in range(2, lv.cols - 2, 3):
-                c = lv.cell_center(col, row)
-                lights.append(Entity(model="quad", color=color.rgb32(235, 245, 255), position=(c.x, WALL_HEIGHT - 0.02, c.z),
+                x = lv.cell_center(col, 0).x
+                lights.append(Entity(model="quad", color=color.rgb32(235, 245, 255), position=(x, WALL_HEIGHT - 0.02, z),
                                      rotation_x=-90, scale=(1.6, 0.22), double_sided=True))
         return lights
 
+    def _runs(self, lv, row):
+        runs, start = [], None
+        for col in range(lv.cols + 1):
+            shelf = col < lv.cols and lv.grid[row][col] == "S"
+            if shelf and start is None:
+                start = col
+            elif not shelf and start is not None:
+                runs.append((start, col - 1))
+                start = None
+        return runs
+
     def _signs(self, lv):
-        for aisle_index, row in enumerate(lv.shelf_rows):
-            label = AISLES[aisle_index % len(AISLES)]
-            cols = [c for c in range(lv.cols) if lv.grid[row][c] == "S"]
-            runs, start = [], cols[0] if cols else None
-            if start is not None:
-                for a, b in zip(cols, cols[1:] + [None]):
-                    if b != a + 1:
-                        runs.append((start, a))
-                        start = b
-                for c0, c1 in runs:
-                    mid = (lv.cell_center(c0, row) + lv.cell_center(c1, row)) / 2
-                    for rot in (0, 180):
-                        pos = Vec3(mid.x, 2.62, mid.z)
-                        Entity(model="quad", color=color.rgb32(240, 240, 240), position=pos, scale=(2.7, 0.56), rotation_y=rot)
-                        sign = Entity(model="quad", color=color.rgb32(190, 35, 30), position=pos, scale=(2.6, 0.48), rotation_y=rot)
-                        sign.z += -0.005 if rot == 0 else 0.005
-                        text = Text(text=f"PASILLO {label}", parent=scene, origin=(0, 0), scale=10, color=color.white,
-                                    position=pos, rotation_y=rot)
-                        text.z += -0.02 if rot == 0 else 0.02
+        # Un letrero por pasillo (el espacio entre dos filas de estantes), colgado en el centro
+        # y mirando a lo largo del pasillo para leerse desde ambos extremos.
+        aisles = []
+        for top, bottom in zip(lv.shelf_rows, lv.shelf_rows[1:]):
+            if bottom - top < 2:
+                continue
+            for c0, c1 in self._runs(lv, top):
+                if all(lv.grid[bottom][c] == "S" for c in range(c0, c1 + 1)):
+                    aisles.append((c0, c1, top + 1, bottom - 1))
+        aisles.sort(key=lambda a: (a[0], a[2]))
+        for number, (c0, c1, r0, r1) in enumerate(aisles, start=1):
+            mid = (lv.cell_center(c0, r0) + lv.cell_center(c1, r1)) / 2
+            width = r1 - r0 + 1
+            for rot, side in ((90, -1), (-90, 1)):
+                pos = Vec3(mid.x, SIGN_HEIGHT, mid.z)
+                Entity(model="quad", color=color.rgb32(240, 240, 240), position=pos,
+                       scale=(width - 0.2, 0.56), rotation_y=rot)
+                sign = Entity(model="quad", color=color.rgb32(190, 35, 30), position=pos,
+                              scale=(width - 0.3, 0.48), rotation_y=rot)
+                sign.x += side * 0.005
+                text = Text(text=f"PASILLO {number}", parent=scene, origin=(0, 0), scale=8, color=color.white,
+                            position=pos, rotation_y=rot)
+                text.x += side * 0.02
 
 
 MAPA_SUPERMERCADO = [
-    "###E####################E#",
-    "#S....C......C....S......#",
-    "#S.......................#",
-    "#S..SSSSSSSSSSSSS..S.....#",
+    "####E################E####",
     "#........................#",
-    "#..C..............C......#",
+    "#......CC...CC...CC......#",
     "#........................#",
-    "#..SSSSSSSSSSSSSSS.......#",
+    "#..SSSSSSSS....SSSSSSSS..#",
     "#........................#",
-    "#....C..............C....#",
     "#........................#",
-    "#..SSSSSSSSSSSSSSS.......#",
+    "#..SSSSSSSS....SSSSSSSS..#",
     "#........................#",
-    "#....C......C............#",
+    "#........................#",
+    "#..SSSSSSSS....SSSSSSSS..#",
+    "#........................#",
+    "#........................#",
+    "#..SSSSSSSS....SSSSSSSS..#",
     "#........................#",
     "##########################",
 ]

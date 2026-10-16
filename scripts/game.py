@@ -32,7 +32,7 @@ class Game(Entity):
         self.pathfinder = Pathfinder(self.level)
         self.enemies = EnemyManager(self)
         self.projectiles = Projectiles(self)
-        self.player = Player(al_disparar=self.shoot, position=INICIO_JUGADOR, rotation_y=ROTACION_INICIAL)
+        self.player = Player(al_disparar=self.shoot, nivel=self.level, position=INICIO_JUGADOR, rotation_y=ROTACION_INICIAL)
         self.night = NightDirector(self)
         self.state = "playing"
         self.kills = 0
@@ -106,6 +106,7 @@ class Game(Entity):
         self.fx.update(dt)
         if self.state != "playing":
             return
+        self.level.exits_open = self.night.doors_open
         pos = self.player_pos
         self.pathfinder.update(pos)
         self.enemies.update(dt)

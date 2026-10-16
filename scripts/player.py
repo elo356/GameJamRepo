@@ -9,16 +9,22 @@ from scripts.bullets import Bullet
 ALTURA_OJOS = 1.65
 POSICION_ARMA = Vec2(0.32, -0.3)
 VIDA_MAXIMA = 100
+VELOCIDAD = 5
+RADIO = 0.3
 
 
 class Player(Entity):
-    def __init__(self, al_disparar=None, **kwargs):
+    def __init__(self, al_disparar=None, nivel=None, **kwargs):
         self.controller = FirstPersonController(height=ALTURA_OJOS, **kwargs)
+        # El movimiento lo hace mover() con la rejilla del nivel; los raycasts del controlador
+        # dejaban al jugador meterse en las paredes por las esquinas.
+        self.controller.speed = 0 if nivel else 5
         self.controller.cursor.color = color.white
         self.controller.cursor.scale = 0.006
         super().__init__(parent=self.controller)
 
         self.al_disparar = al_disparar
+        self.nivel = nivel
         self.frames_pistola = [Texture(asset_path("weapons", f"pist_{i}.png"), filtering=None)
                                for i in range(4)]
         self.disparando = False
@@ -61,7 +67,8 @@ class Player(Entity):
         self.flash_dano.color = color.rgba(0.8, 0, 0, 0.45)
         self.flash_dano.animate_color(color.rgba(0.8, 0, 0, 0), duration=0.5)
         if direccion is not None and nivel is not None and empuje > 0:
-            self.controller.x, self.controller.z = nivel.slide_move(self.pos, direccion.x * empuje, direccion.z * empuje, 0.3)
+            self.controller.x, self.controller.z = nivel.slide_move(self.pos, direccion.x * empuje, direccion.z * empuje, RADIO,
+                                                                    nivel.blocks_player)
         if self.vida <= 0:
             self.vivo = False
 
@@ -78,7 +85,16 @@ class Player(Entity):
         self.controller.camera_pivot.rotation_x = 0
         self.congelar(False)
 
+    def mover(self):
+        c = self.controller
+        if not self.nivel or not c.enabled:
+            return
+        direccion = (c.forward * (held_keys["w"] - held_keys["s"]) + c.right * (held_keys["d"] - held_keys["a"])).normalized()
+        paso = VELOCIDAD * time.dt
+        c.x, c.z = self.nivel.slide_move(c.position, direccion.x * paso, direccion.z * paso, RADIO, self.nivel.blocks_player)
+
     def update(self):
+        self.mover()
         moviendo = self.controller.grounded and (held_keys["w"] or held_keys["a"] or held_keys["s"] or held_keys["d"])
         if moviendo:
             self.balanceo += time.dt * 9
