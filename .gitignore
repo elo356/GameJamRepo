@@ -13,3 +13,6 @@ __pycache__/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Build web (pygbag)
+build/

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+#pygane-script: deps=["ursina", "numpy", "scipy", "pillow", "pyglet", "pyopengl", "pyrr", "noise"]
 import sys
 from pathlib import Path
 import asyncio
@@ -36,7 +36,7 @@ class PauseHandler(Entity):
             application.quit()
 
 
-def main():
+def setup():
     app = Ursina(title=" After Hours", size=(1280, 720))
 
     window.editor_ui.enabled = False
@@ -46,9 +46,11 @@ def main():
     setup_rendering()
 
     window.update_aspect_ratio()
+    return app
 
-    app.run()
 
+def main():
+    setup().run()
 
 if __name__ == "__main__":
     main()
