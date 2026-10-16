@@ -1,13 +1,11 @@
 import random
-from pathlib import Path
-
 from ursina import *
 
 from scripts.effects import Effects
 from scripts.enemy import PLAYER_RADIUS, EnemyManager, Projectiles, load_enemy_assets
 from scripts.night import NightDirector
 from scripts.player import Player
-from scripts.supermercado import INICIO_JUGADOR, asset_path
+from scripts.supermercado import INICIO_JUGADOR, audio_path
 from scripts.world import Pathfinder, build_world
 
 ROTACION_INICIAL = 180
@@ -16,7 +14,7 @@ ALCANCE_DISPARO = 30
 
 class Sfx:
     def __init__(self, names):
-        self.clips = {name: Path(asset_path("audio", f"{name}.wav")) for name in names}
+        self.clips = {name: audio_path(f"{name}.wav") for name in names}
 
     def play(self, name, volume=1.0, pitch_var=0.0):
         Audio(self.clips[name], volume=volume, pitch=1 + random.uniform(-pitch_var, pitch_var), auto_destroy=True)

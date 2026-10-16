@@ -25,6 +25,14 @@ def asset_path(*parts):
     return str(ROOT / filename)
 
 
+def audio_path(*parts):
+    """Return an absolute, validated path to an audio asset."""
+    path = Path(asset_path("audio", *parts)).resolve()
+    if not path.is_file():
+        raise FileNotFoundError(f"Audio file not found: {path}")
+    return path
+
+
 def textura(nombre):
     path = asset_path("environment", f"{nombre}.png")
     if not Path(path).exists():

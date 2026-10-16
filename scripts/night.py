@@ -1,10 +1,8 @@
 import random
-from pathlib import Path
-
 from ursina import *
 
 from scripts.neblina import set_fog
-from scripts.supermercado import asset_path
+from scripts.supermercado import audio_path
 from scripts.world import distance_xz
 
 INICIO_MINUTOS = -10
@@ -17,7 +15,7 @@ LUZ_APAGADA = color.rgb32(60, 64, 70)
 
 
 def sonido(*partes, **kwargs):
-    return Audio(Path(asset_path(*partes)), autoplay=False, **kwargs)
+    return Audio(audio_path(*partes), autoplay=False, **kwargs)
 
 
 class HudNoche:

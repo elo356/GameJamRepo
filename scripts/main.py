@@ -1,4 +1,4 @@
-#!/home/elo/Documents/GameJamRepo/.venv/bin/python
+#!/usr/bin/env python3
 
 import sys
 from pathlib import Path

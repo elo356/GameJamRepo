@@ -1,14 +1,12 @@
-from pathlib import Path
-
 from ursina import *
 from ursina.prefabs.first_person_controller import FirstPersonController
 
-from scripts.supermercado import asset_path
+from scripts.supermercado import asset_path, audio_path
 from scripts.bullets import Bullet
 
 ALTURA_OJOS = 1.65
 POSICION_ARMA = Vec2(0.32, -0.3)
-VIDA_MAXIMA = 100
+VIDA_MAXIMA = 1000
 VELOCIDAD = 5
 RADIO = 0.3
 
@@ -38,7 +36,7 @@ class Player(Entity):
                           scale=(0.6, 0.6 * 150 / 170),
                           position=POSICION_ARMA,
                           )
-        self.sonido_disparo = Audio(Path(asset_path("audio", "shot_sound.wav")), autoplay=False, loop=False, volume=0.5)
+        self.sonido_disparo = Audio(audio_path("shot_sound.wav"), autoplay=False, loop=False, volume=0.5)
 
         self.flash_dano = Entity(parent=camera.ui, model="quad", scale=(3, 2), z=-0.6,
                                  color=color.rgba(0.8, 0, 0, 0))
