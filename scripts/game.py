@@ -22,6 +22,27 @@ class Sfx:
         Audio(self.clips[name], volume=volume, pitch=1 + random.uniform(-pitch_var, pitch_var), auto_destroy=True)
 
 
+class PauseHandler(Entity):
+    def __init__(self, **kwargs):
+        super().__init__(ignore_paused=True, **kwargs)
+        self.pause_text = Text('PAUSED', origin=(0, -1), scale=3, enabled=False, color = color.red, font='VeraMono.ttf')
+        self.instrucctions_text = Text("Press 'P' to unpause", origin = (0,2), scale =2, enabled = False, color=color.red, font = 'VeraMono.ttf')
+        
+def input(self, key):
+    if key == "p" or key == "P":
+        application.paused = not application.paused
+        self.pause_text.enabled = application.paused
+        self.instrucctions_text.enabled = application.paused
+        self.state = "playing" if not application.paused else "paused"
+    elif key == "escape":
+        if application.paused:
+            application.quit()
+    else:
+        application.paused = True
+        self.pause_text.enabled = True
+        self.instrucctions_text.enabled = True
+
+
 class Game(Entity):
     def __init__(self):
         super().__init__()
