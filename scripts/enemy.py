@@ -34,7 +34,7 @@ def load_enemy_assets():
         textures[f.stem] = Texture(str(f), filtering=None)
         pixels = [p for p in Image.open(f).convert("RGBA").getdata() if p[3] > 128]
         r, g, b = (sum(p[i] for p in pixels) / len(pixels) / 255 for i in range(3))
-        colors[f.stem] = color.rgb(min(1, r * 1.2), min(1, g * 1.2), min(1, b * 1.2))
+        colors[f.stem] = (min(1, r * 1.2), min(1, g * 1.2), min(1, b * 1.2))
     return textures, colors
 
 
@@ -104,6 +104,7 @@ class Enemy:
             self.awaken()
         self.hp -= dmg
         self.flash = 0.1
+        self.game.fx.burst(self.e.world_position, self.tint, count=4, speed=2.0, size=0.06, life=0.5)
         if push_dir is not None and self.state == "chase":
             self.e.x, self.e.z = self.game.level.slide_move(self.e.position, push_dir.x * 0.35, push_dir.z * 0.35, self.radius)
         if self.hp <= 0:
@@ -114,6 +115,9 @@ class Enemy:
 
     def die(self):
         self.state = "dead"
+        pos = self.e.world_position
+        self.game.fx.burst(pos, self.tint, count=16, speed=3.5, size=0.09, life=1.0)
+        self.game.fx.splat(pos, self.tint, size=self.size * 1.3)
         self.game.sfx.play("splat", 0.8, 0.2)
         destroy(self.e)
 
@@ -154,6 +158,7 @@ class Enemy:
             self.timer = 0.45
             self.e.x, self.e.z = self.game.level.unstick(self.e.position, self.slot["dir"], self.size * 0.4)
             self.e.scale_y = self.size * 0.6
+            self.game.fx.burst(Vec3(self.e.x, 0.05, self.e.z), (0.6, 0.6, 0.6), count=5, speed=1.5, size=0.05, life=0.4)
             if distance_xz(self.e.position, self.game.player_pos) < 12:
                 self.game.sfx.play("thump", 0.6, 0.2)
 
@@ -278,8 +283,8 @@ class Projectiles(Entity):
         start = enemy.e.position + Vec3(0, enemy.size * 0.2, 0)
         target = self.game.player_pos + Vec3(0, 1.1, 0)
         direction = (target - start).normalized()
-        e = Entity(model="sphere", color=enemy.tint, position=start, scale=0.14)
-        self.items.append([e, direction * 7, enemy.stats["damage"]])
+        e = Entity(model="sphere", color=color.rgb(*enemy.tint), position=start, scale=0.14)
+        self.items.append([e, direction * 7, enemy.stats["damage"], enemy.tint])
         self.game.sfx.play("growl", 0.25, 0.3)
 
     def clear(self):
@@ -292,14 +297,17 @@ class Projectiles(Entity):
         game, level = self.game, self.game.level
         keep = []
         for item in self.items:
-            e, vel, dmg = item
+            e, vel, dmg, tint = item
             vel.y -= 1.5 * dt
             e.position += vel * dt
             if distance_xz(e.position, game.player_pos) < PLAYER_RADIUS + 0.15 and 0 < e.y < 1.9:
                 game.damage_player(dmg, Vec3(vel.x, 0, vel.z).normalized(), knockback=0.1)
+                game.fx.burst(e.position, tint, count=8, speed=2, size=0.06, life=0.5)
                 destroy(e)
                 continue
             if e.y <= 0.05 or level.blocked(e.x, e.z, 0.05):
+                game.fx.burst(e.position, tint, count=8, speed=2, size=0.06, life=0.5)
+                game.fx.splat(e.position, tint, size=0.4)
                 game.sfx.play("splat", 0.35, 0.3)
                 destroy(e)
                 continue

@@ -3,6 +3,7 @@ from pathlib import Path
 
 from ursina import *
 
+from scripts.effects import Effects
 from scripts.enemy import PLAYER_RADIUS, EnemyManager, Projectiles, load_enemy_assets
 from scripts.night import NightDirector
 from scripts.player import Player
@@ -27,6 +28,7 @@ class Game(Entity):
         self.level, self.doors, self.lights = build_world()
         self.enemy_textures, self.enemy_colors = load_enemy_assets()
         self.sfx = Sfx(["buzz", "growl", "growl_big", "hit", "splat", "thump", "hurt"])
+        self.fx = Effects()
         self.pathfinder = Pathfinder(self.level)
         self.enemies = EnemyManager(self)
         self.projectiles = Projectiles(self)
@@ -84,6 +86,7 @@ class Game(Entity):
     def restart(self):
         self.enemies.clear()
         self.projectiles.clear()
+        self.fx.clear()
         for door in self.doors:
             door.close()
         self.kills = 0
@@ -99,9 +102,10 @@ class Game(Entity):
             self.restart()
 
     def update(self):
+        dt = time.dt
+        self.fx.update(dt)
         if self.state != "playing":
             return
-        dt = time.dt
         pos = self.player_pos
         self.pathfinder.update(pos)
         self.enemies.update(dt)
