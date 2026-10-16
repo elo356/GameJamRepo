@@ -1,10 +1,16 @@
+import sys
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from ursina import *
-from ursina.prefabs.first_person_controller import FirstPersonController
 
-from supermercado import INICIO_JUGADOR, asset_path, construir_supermercado
-from bullets import Bullet
-# from menu import Menu
-
+from scripts.supermercado import INICIO_JUGADOR
+from scripts.player import Player
+from scripts.world import FOG_COLOR, build_world
 
 class PauseHandler(Entity):
     def __init__(self, **kwargs):
@@ -25,76 +31,35 @@ class PauseHandler(Entity):
                 self.pause_text.enabled = True
                 self.instrucctions_text.enabled = True
 
-class Player(Entity):
-
-
-    def __init__(self, **kwargs):
-        self.controller = FirstPersonController(**kwargs)
-        super().__init__(parent=self.controller)
-
-        self.frames_pistola = [Texture(asset_path("weapons", f"pist_{i}.png"), filtering=None)
-                               for i in range(4)]
-        self.disparando = False
-
-        self.gun = Entity(parent=camera.ui,
-                          model="quad",
-                          texture=self.frames_pistola[0],
-                          scale=(0.68, 0.6),
-                          position=(0.1, -0.2),
-                          )
-        
-
-    def input(self, key):
-
-        if key == "left mouse down":
-            self.disparar()
-            bullet = Bullet(position=self.controller.position + self.controller.forward + Vec3(0, 1, 0),
-                            direction=camera.forward + Vec3(0, 0.1, 0),
-                            speed=20)
-            sound = Audio( "shot_sound.wav", autoplay=False, loop=False, volume=0.5)
-            sound.play()
-
-            
-      
-        elif key == "escape":
-            application.quit()
-        # elif Menu.enabled and (key == "Enter" or key == "return"):
-        #     Menu.start_game()
-
-
-    def disparar(self):
-        if self.disparando:
-            return
-        self.disparando = True
-
-        self.gun.texture = self.frames_pistola[1]
-        invoke(setattr, self.gun, "texture", self.frames_pistola[2], delay=0.08)
-        invoke(setattr, self.gun, "texture", self.frames_pistola[3], delay=0.16)
-        invoke(self.terminar_disparo, delay=0.24)
-
-    def terminar_disparo(self):
-        self.gun.texture = self.frames_pistola[0]
-        self.disparando = False
-
 
 
 def main():
-    app = Ursina(title=" After Hours", size=(1280, 720), origin=(0, 0))
+    app = Ursina(title=" After Hours", size=(1280, 720))
 
-   
+    window.editor_ui.enabled = False
+    window.color = FOG_COLOR
 
-    construir_supermercado()
+    build_world()
 
-    caja = Entity(model="cube", color=color.red, position=(0, 0.5, 5), collider="box")
+    scene.fog_color = FOG_COLOR
+    scene.fog_density = (6, 26)
 
-    player = Player(position=INICIO_JUGADOR)
-
-    window.update_aspect_ratio()
+    player = Player(position=INICIO_JUGADOR, rotation_y=180)
 
     pause_handler = PauseHandler()
 
-    # menu = Menu()
-  
+    window.update_aspect_ratio()
+
+    def start_game():
+        print("Starting game...")
+        main_menu.enabled = False
+
+    main_menu = ButtonList({
+    "Start Game": Func(start_game),
+    "Options": Func(print, "Options opened"),
+    "Quit": Func(application.quit)
+    }, width=0.5, button_height=1.5)
+
     app.run()
 
 
