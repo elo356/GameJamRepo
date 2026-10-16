@@ -5,7 +5,7 @@ class Bullet(Entity):
     def __init__(self, position=Vec3(0, 0, 0), direction=Vec3(0, 0, 0), speed=10, **kwargs):
         super().__init__(
             model='sphere',
-            color=color.yellow,
+            color=color.rgb32(255, 230, 120),
             scale=0.1,
             position=position,
             **kwargs
