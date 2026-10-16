@@ -1,12 +1,15 @@
 from ursina import *
 
-from scripts.supermercado import ROOT, textura
+from scripts.supermercado import ROOT, asset_path, textura
 
 WALL_HEIGHT = 3
 SHELF_HEIGHT = 2.2
 COUNTER_HEIGHT = 1.1
 SHELF_BOARDS = (0.15, 0.65, 1.15, 1.65)
 PRODUCT_PIXEL = 0.011
+PRODUCT_MAX_SIZE = 0.3
+ENEMY_SLOT_CHANCE = 0.06
+JAR_CHANCE = 0.12
 AISLES = ("A", "B", "C", "D")
 FOG_COLOR = color.rgb32(14, 16, 24)
 
@@ -14,6 +17,15 @@ FOG_COLOR = color.rgb32(14, 16, 24)
 def cargar_productos():
     carpeta = ROOT / "images" / "products"
     return [Texture(str(f), filtering=None) for f in sorted(carpeta.rglob("*.png"))]
+
+
+def product_size(tex):
+    pixel = min(PRODUCT_PIXEL, PRODUCT_MAX_SIZE / max(tex.width, tex.height))
+    return tex.width * pixel, tex.height * pixel
+
+
+def distance_xz(a, b):
+    return math.hypot(a[0] - b[0], a[2] - b[2])
 
 
 class MeshBuilder:
@@ -74,6 +86,7 @@ class Level:
         self.grid = [row + ['.'] * (self.cols - len(row)) for row in self.grid]
         self.exit_cells = exit_cells or []
         self.shelf_rows = [r for r, row in enumerate(self.grid) if "S" in row]
+        self.shelf_slots = []
 
     def cell_center(self, col, row):
         return Vec3(col + 0.5 - self.cols / 2, 0, row + 0.5 - self.rows / 2)
@@ -86,11 +99,90 @@ class Level:
     def solid(self, cell):
         return cell in "#FSCE"
 
+    def cell_at(self, x, z):
+        return math.floor(x + self.cols / 2), math.floor(z + self.rows / 2)
+
+    def blocked(self, x, z, r):
+        for cx, cz in ((x - r, z - r), (x + r, z - r), (x - r, z + r), (x + r, z + r)):
+            if self.solid(self.cell_type(*self.cell_at(cx, cz))):
+                return True
+        return False
+
+    def slide_move(self, pos, dx, dz, r):
+        x, z = pos[0], pos[2]
+        if not self.blocked(x + dx, z, r):
+            x += dx
+        if not self.blocked(x, z + dz, r):
+            z += dz
+        return x, z
+
+    def unstick(self, pos, direction, r):
+        x, z = pos[0], pos[2]
+        for _ in range(20):
+            if not self.blocked(x, z, r):
+                break
+            x, z = x + direction[0] * 0.05, z + direction[2] * 0.05
+        return x, z
+
+    def _walk_line(self, a, b, test):
+        dist = distance_xz(a, b)
+        steps = max(1, int(dist / 0.2))
+        for i in range(1, steps):
+            t = i / steps
+            if test(a[0] + (b[0] - a[0]) * t, a[2] + (b[2] - a[2]) * t):
+                return False
+        return True
+
+    def line_of_sight(self, a, b):
+        return self._walk_line(a, b, lambda x, z: self.cell_type(*self.cell_at(x, z)) in "#SE")
+
+    def clear_path(self, a, b, r):
+        return self._walk_line(a, b, lambda x, z: self.blocked(x, z, r))
+
+
+class Pathfinder:
+    def __init__(self, level):
+        self.level = level
+        self.target = None
+        self.dist = {}
+
+    def update(self, pos):
+        cell = self.level.cell_at(pos[0], pos[2])
+        if cell == self.target:
+            return
+        self.target = cell
+        lv = self.level
+        self.dist = {cell: 0}
+        frontier = [cell]
+        while frontier:
+            nxt = []
+            for c, r in frontier:
+                for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    n = (c + dc, r + dr)
+                    if n not in self.dist and not lv.solid(lv.cell_type(*n)):
+                        self.dist[n] = self.dist[(c, r)] + 1
+                        nxt.append(n)
+            frontier = nxt
+
+    def next_step(self, pos):
+        c, r = self.level.cell_at(pos[0], pos[2])
+        here = self.dist.get((c, r))
+        if here is None:
+            return None
+        best = None
+        for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            n = (c + dc, r + dr)
+            d = self.dist.get(n)
+            if d is not None and d < here and (best is None or d < best[0]):
+                best = (d, n)
+        return self.level.cell_center(*best[1]) if best else None
+
 
 class StoreBuilder:
     def __init__(self, level):
         self.level = level
         self.product_textures = cargar_productos()
+        self.jar_texture = Texture(asset_path("environment", "OGASGJ2018_Logo_Draft3_jar.png"), filtering="mipmap")
 
     def build(self):
         lv = self.level
@@ -106,7 +198,7 @@ class StoreBuilder:
                     self._block(tiles, col, row, WALL_HEIGHT, set("#F"))
                 elif ch == "S":
                     self._block(shelves, col, row, SHELF_HEIGHT, set("#FSE"))
-                    for d_row, dz in ((-1, 1), (1, -1)):
+                    for d_row, dz in ((-1, -1), (1, 1)):
                         if not lv.solid(lv.cell_type(col, row + d_row)):
                             self._stock_shelf(boards, products, col, row, dz)
                 elif ch == "C":
@@ -146,8 +238,8 @@ class StoreBuilder:
         x0, x1 = c.x - 0.5, c.x + 0.5
         z0, z1 = c.z - 0.5, c.z + 0.5
         faces = (
-            (lv.cell_type(col, row - 1), [(x1, 0, z1), (x0, 0, z1), (x0, height, z1), (x1, height, z1)], 0.95),
-            (lv.cell_type(col, row + 1), [(x0, 0, z0), (x1, 0, z0), (x1, height, z0), (x0, height, z0)], 0.9),
+            (lv.cell_type(col, row + 1), [(x1, 0, z1), (x0, 0, z1), (x0, height, z1), (x1, height, z1)], 0.95),
+            (lv.cell_type(col, row - 1), [(x0, 0, z0), (x1, 0, z0), (x1, height, z0), (x0, height, z0)], 0.9),
             (lv.cell_type(col + 1, row), [(x1, 0, z0), (x1, 0, z1), (x1, height, z1), (x1, height, z0)], 0.75),
             (lv.cell_type(col - 1, row), [(x0, 0, z1), (x0, 0, z0), (x0, height, z0), (x0, height, z1)], 0.8),
         )
@@ -158,18 +250,23 @@ class StoreBuilder:
             mb.quad([(x0, height, z0), (x1, height, z0), (x1, height, z1), (x0, height, z1)], 0.55)
 
     def _stock_shelf(self, boards, products, col, row, dz):
-        c = self.level.cell_center(col, row)
+        lv = self.level
+        c = lv.cell_center(col, row)
         face = c.z + dz * 0.5
         lip = face + dz * 0.2
         x0, x1 = c.x - 0.5, c.x + 0.5
         for y in SHELF_BOARDS:
             boards.quad([(x0, y, face), (x1, y, face), (x1, y, lip), (x0, y, lip)], 0.9, uv=(1, 0.2))
             boards.quad([(x0, y - 0.05, lip), (x1, y - 0.05, lip), (x1, y, lip), (x0, y, lip)], 0.7, uv=(1, 0.05))
-            tex = random.choice(self.product_textures)
-            w, h = tex.width * PRODUCT_PIXEL, tex.height * PRODUCT_PIXEL
+            tex = self.jar_texture if random.random() < JAR_CHANCE else random.choice(self.product_textures)
+            w, h = product_size(tex)
             z = face + dz * 0.1
             for i in range(3):
                 px = x0 + (i + 0.5) / 3
+                if random.random() < ENEMY_SLOT_CHANCE:
+                    lv.shelf_slots.append({"pos": Vec3(px, y, z), "dir": Vec3(0, 0, dz),
+                                           "aisle": lv.shelf_rows.index(row)})
+                    continue
                 products.setdefault(tex, MeshBuilder()).quad(
                     [(px - w / 2, y, z), (px + w / 2, y, z), (px + w / 2, y + h, z), (px - w / 2, y + h, z)])
 
@@ -227,4 +324,5 @@ MAPA_SUPERMERCADO = [
 def build_world():
     level = Level(MAPA_SUPERMERCADO,
                   exit_cells=[(c, r) for r, fila in enumerate(MAPA_SUPERMERCADO) for c, ch in enumerate(fila) if ch == "E"])
-    return StoreBuilder(level).build()
+    doors, lights = StoreBuilder(level).build()
+    return level, doors, lights

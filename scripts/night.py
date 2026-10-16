@@ -1,10 +1,10 @@
-"""El "director" de la noche: reloj, historia y luces que parpadean."""
 import random
 from pathlib import Path
 
 from ursina import *
 
 from scripts.supermercado import asset_path
+from scripts.world import distance_xz
 
 INICIO_MINUTOS = -10
 MINUTOS_POR_SEGUNDO = 2
@@ -50,16 +50,13 @@ class HudNoche:
 
 
 class NightDirector(Entity):
-    def __init__(self, puertas, luces):
+    def __init__(self, game):
         super().__init__()
-        self.puertas = puertas
-        self.luces = luces
+        self.game = game
         self.hud = HudNoche()
-        self.zumbido = sonido("audio", "buzz.wav", volume=0.5)
         self.ambiente = sonido("audio", "atmo-public-supermarket-calm-cooling-shelf-switching-distant-01.wav",
                                loop=True, volume=0.4)
         self.musica_noche = sonido("audio", "25. Dark Factory.wav", loop=True, volume=0.45)
-        self.ambiente.play()
         self.reset()
 
     def reset(self):
@@ -68,12 +65,17 @@ class NightDirector(Entity):
         self.last_hour = -1
         self.flicker = 0.0
         self.base_dark = 0.0
+        self.awaken_timer = 2.0
         self.doors_open = False
         scene.fog_density = (NIEBLA_INICIO, NIEBLA_NORMAL)
+        self.musica_noche.stop()
+        self.ambiente.volume = 0.4
+        self.ambiente.play()
+        self.hud.show_message("", "", 0)
+        self.hud.set_oscuridad(0)
 
     @property
     def progress(self):
-        """0 a medianoche, 1 a las 06:00."""
         return clamp(self.minutes / 360.0, 0, 1)
 
     def clock_text(self):
@@ -86,22 +88,20 @@ class NightDirector(Entity):
         self.minutes += dt * MINUTOS_POR_SEGUNDO
         self._story_events(before)
         self._lights(dt)
+        if self.minutes >= 0:
+            self._awaken_enemies(dt)
         self.hud.set_reloj(self.clock_text())
         self.hud.update(dt)
 
-    def _buzz(self, volumen):
-        self.zumbido.volume = volumen
-        self.zumbido.play()
-
     def _story_events(self, before):
-        hud = self.hud
+        hud, sfx = self.hud, self.game.sfx
         if self.story == 0 and self.minutes >= -4:
             self.story = 1
             hud.show_message("...algo se mueve en los estantes", "", 3, color.light_gray)
         if self.story == 1 and self.minutes >= 0:
             self.story = 2
             self.flicker = 2.5
-            self._buzz(0.8)
+            sfx.play("buzz", 0.8)
             self.ambiente.fade_out(duration=2)
             self.musica_noche.play()
             hud.show_message("MEDIANOCHE: LA COMIDA COBRO VIDA", "Sobrevive hasta las 06:00", 4, color.rgb32(255, 90, 70))
@@ -109,7 +109,7 @@ class NightDirector(Entity):
         if self.minutes >= 360 and not self.doors_open:
             self.story = 3
             self.doors_open = True
-            for puerta in self.puertas:
+            for puerta in self.game.doors:
                 puerta.open()
             hud.show_message("06:00", "Las puertas se abrieron. ¡Sal de aqui!", 4, color.rgb32(90, 255, 120))
 
@@ -120,15 +120,14 @@ class NightDirector(Entity):
             hud.show_message(f"{hour:02d}:00", f"Faltan {left} hora{'s' if left > 1 else ''} para que abran", 2.5,
                              color.rgb32(255, 210, 90))
             self.flicker = 0.8
-            self._buzz(0.5)
+            sfx.play("buzz", 0.5)
 
     def _lights(self, dt):
-        """La tienda se oscurece con la noche y los fluorescentes parpadean."""
         if self.minutes >= 0:
             self.base_dark = 0.22 + 0.3 * self.progress
             if random.random() < dt * 0.08:
                 self.flicker = random.uniform(0.3, 0.9)
-                self._buzz(0.35)
+                self.game.sfx.play("buzz", 0.35)
         alpha = self.base_dark
         apagada = False
         if self.flicker > 0:
@@ -137,5 +136,39 @@ class NightDirector(Entity):
                 alpha = 0.85
                 apagada = True
         self.hud.set_oscuridad(alpha)
-        for luz in self.luces:
+        for luz in self.game.lights:
             luz.color = LUZ_APAGADA if apagada else LUZ_ENCENDIDA
+
+    def _awaken_enemies(self, dt):
+        game, enemies = self.game, self.game.enemies
+        player_pos = game.player_pos
+        active = enemies.active_count()
+        cap = 5 + int(self.progress * 12) + (4 if self.doors_open else 0)
+        interval = 0.8 if self.doors_open else lerp(4.5, 1.1, self.progress)
+
+        self.awaken_timer -= dt
+        if self.awaken_timer <= 0 and active < cap:
+            self.awaken_timer = interval * random.uniform(0.7, 1.3)
+            dormant = enemies.dormant()
+            if not dormant:
+                self._restock()
+                dormant = enemies.dormant()
+            near = [f for f in dormant if 3 < distance_xz(f.position, player_pos) < 13]
+            pool = near or dormant
+            for _ in range(1 if self.progress < 0.5 else 2):
+                if pool:
+                    f = random.choice(pool)
+                    pool.remove(f)
+                    f.awaken()
+
+        for f in enemies.dormant():
+            if distance_xz(f.position, player_pos) < 1.6 and random.random() < dt * 0.9 and active < cap + 2:
+                f.awaken()
+
+    def _restock(self):
+        game = self.game
+        used = {id(f.slot) for f in game.enemies.dormant()}
+        free = [s for s in game.level.shelf_slots
+                if id(s) not in used and distance_xz(s["pos"], game.player_pos) > 8]
+        for slot in random.sample(free, min(20, len(free))):
+            game.enemies.spawn(slot)
