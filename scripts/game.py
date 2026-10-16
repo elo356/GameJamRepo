@@ -13,41 +13,28 @@ ROTACION_INICIAL = 180
 ALCANCE_DISPARO = 30
 
 
+ENEMY_VOICES = {
+    "wobble": "enemySounds/sound1",
+    "raven": "enemySounds/sound2",
+    "critter": "enemySounds/sound3",
+    "snort": "enemySounds/sound4",
+}
+
+
 class Sfx:
-    def __init__(self, names):
+    def __init__(self, names, aliases=None):
         self.clips = {name: audio_path(f"{name}.wav") for name in names}
+        self.clips.update({name: audio_path(f"{file}.wav") for name, file in (aliases or {}).items()})
 
-    def play(self, name, volume=1.0, pitch_var=0.0):
-        Audio(self.clips[name], volume=volume, pitch=1 + random.uniform(-pitch_var, pitch_var), auto_destroy=True)
-
-
-class PauseHandler(Entity):
-    def __init__(self, **kwargs):
-        super().__init__(ignore_paused=True, **kwargs)
-        self.pause_text = Text('PAUSED', origin=(0, -1), scale=3, enabled=False, color = color.red, font='VeraMono.ttf')
-        self.instrucctions_text = Text("Press 'P' to unpause", origin = (0,2), scale =2, enabled = False, color=color.red, font = 'VeraMono.ttf')
-        
-def input(self, key):
-    if key == "p" or key == "P":
-        application.paused = not application.paused
-        self.pause_text.enabled = application.paused
-        self.instrucctions_text.enabled = application.paused
-        self.state = "playing" if not application.paused else "paused"
-    elif key == "escape":
-        if application.paused:
-            application.quit()
-    else:
-        application.paused = True
-        self.pause_text.enabled = True
-        self.instrucctions_text.enabled = True
-
+    def play(self, name, volume=1.0, pitch_var=0.0, pitch=1.0):
+        Audio(self.clips[name], volume=volume, pitch=pitch + random.uniform(-pitch_var, pitch_var), auto_destroy=True)
 
 class Game(Entity):
     def __init__(self):
         super().__init__()
         self.level, self.doors, self.lights = build_world()
         self.enemy_textures, self.enemy_colors = load_enemy_assets()
-        self.sfx = Sfx(["buzz", "growl", "growl_big", "hit", "splat", "thump", "hurt"])
+        self.sfx = Sfx(["buzz", "growl", "growl_big", "hit", "splat", "thump", "hurt"], ENEMY_VOICES)
         self.fx = Effects()
         self.pathfinder = Pathfinder(self.level)
         self.enemies = EnemyManager(self)

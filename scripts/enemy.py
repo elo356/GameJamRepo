@@ -13,15 +13,20 @@ HURT_COLOR = color.rgb(1, 0.35, 0.35)
 PLAYER_RADIUS = 0.3
 
 BASE_STATS = {"size": 0.5, "hp": 3, "speed": 2.2, "damage": 10, "ranged": False, "zigzag": False,
-              "knockback": 0.15, "big": False, "fly": 0.0, "frames": 1, "weight": 1}
+              "knockback": 0.15, "big": False, "fly": 0.0, "frames": 1, "weight": 1,
+              "voice": "growl", "pitch": 1.0}
 ENEMY_TYPES = {
-    "Apple_Two": {"size": 0.55, "hp": 3, "speed": 2.6, "damage": 10, "frames": 2, "weight": 3},
-    "Jalapeño": {"size": 0.45, "hp": 2, "speed": 1.8, "damage": 8, "ranged": True, "weight": 2},
-    "Pineapple": {"size": 0.6, "hp": 4, "speed": 2.0, "damage": 12, "fly": 0.3, "zigzag": True, "weight": 2},
-    "Pretzel_Bat": {"size": 0.5, "hp": 2, "speed": 3.2, "damage": 6, "fly": 1.1, "zigzag": True, "weight": 2},
-    "Waffles": {"size": 0.5, "hp": 3, "speed": 2.4, "damage": 10, "weight": 3},
+    "Apple_Two": {"size": 0.55, "hp": 3, "speed": 2.6, "damage": 10, "frames": 2, "weight": 3,
+                  "voice": "wobble", "pitch": 1.1},
+    "Jalapeño": {"size": 0.45, "hp": 2, "speed": 1.8, "damage": 8, "ranged": True, "weight": 2,
+                 "voice": "snort", "pitch": 1.3},
+    "Pineapple": {"size": 0.6, "hp": 4, "speed": 2.0, "damage": 12, "fly": 0.3, "zigzag": True, "weight": 2,
+                  "voice": "critter", "pitch": 1.0},
+    "Pretzel_Bat": {"size": 0.5, "hp": 2, "speed": 3.2, "damage": 6, "fly": 1.1, "zigzag": True, "weight": 2,
+                    "voice": "raven", "pitch": 1.2},
+    "Waffles": {"size": 0.5, "hp": 3, "speed": 2.4, "damage": 10, "weight": 3, "voice": "wobble", "pitch": 0.8},
     "Watermelon_monster": {"size": 0.75, "hp": 8, "speed": 1.4, "damage": 25, "knockback": 0.6, "big": True,
-                           "weight": 1},
+                           "weight": 1, "voice": "snort", "pitch": 0.6},
 }
 
 
@@ -96,7 +101,10 @@ class Enemy:
         self.e.color = color.white
         self.e.scale = (self.size * self.aspect, self.size)
         self.vel = self.slot["dir"] * random.uniform(1.4, 2.0) + Vec3(random.uniform(-0.4, 0.4), 1.6, 0)
-        self.game.sfx.play("growl_big" if self.stats["big"] else "growl", 0.45, 0.15)
+        self.cry(0.5)
+
+    def cry(self, volume, pitch_var=0.1):
+        self.game.sfx.play(self.stats["voice"], volume, pitch_var, pitch=self.stats["pitch"])
 
     def hurt(self, dmg, push_dir=None):
         if not self.alive:
@@ -211,6 +219,7 @@ class Enemy:
                 game.damage_player(self.stats["damage"], to_player.normalized() if dist > 0 else None,
                                    knockback=self.stats["knockback"])
                 self.e.scale_x = self.size * self.aspect * 1.25
+                self.cry(0.35, 0.15)
             elif self.stats["ranged"] and self.los and dist < 11:
                 self.attack_cd = random.uniform(1.8, 2.6)
                 game.projectiles.throw(self)
@@ -286,7 +295,7 @@ class Projectiles(Entity):
         direction = (target - start).normalized()
         e = fogify(Entity(model="sphere", color=color.rgb(*enemy.tint), position=start, scale=0.14))
         self.items.append([e, direction * 7, enemy.stats["damage"], enemy.tint])
-        self.game.sfx.play("growl", 0.25, 0.3)
+        enemy.cry(0.3, 0.2)
 
     def clear(self):
         for e, *_ in self.items:

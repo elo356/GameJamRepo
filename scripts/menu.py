@@ -34,11 +34,22 @@ class Menu(Entity):
 
 class MainMenu(Menu):
     def __init__(self, al_jugar):
-        super().__init__("AFTER HOURS", [
+        super().__init__("SpookMart", [
             ("Jugar", al_jugar),
             ("Salir", application.quit),
         ], subtitulo="Sobrevive la noche en el supermercado", col=color.rgb32(255, 90, 70))
         self.al_jugar = al_jugar
+
+        Text(parent=self, text="CONTROLES", origin=(0, 0), scale=1.1, y=-0.25, z=-0.1,
+             color=color.rgb32(255, 90, 70), font=FUENTE)
+        columnas = [
+            [("WASD", "Moverse"), ("Raton", "Apuntar"), ("Clic izq", "Disparar"), ("Espacio", "Saltar")],
+            [("P", "Pausa"), ("R", "Reintentar"), ("Enter", "Jugar"), ("Esc", "Salir")],
+        ]
+        for x, filas in zip((-0.3, 0.06), columnas):
+            texto = "\n".join(f"{tecla:<9}{accion}" for tecla, accion in filas)
+            Text(parent=self, text=texto, origin=(-0.5, 0.5), scale=0.9, x=x, y=-0.29, z=-0.1,
+                 color=color.light_gray, font=FUENTE)
 
     def input(self, key):
         if key == "escape":

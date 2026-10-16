@@ -53,9 +53,8 @@ class NightDirector(Entity):
         super().__init__()
         self.game = game
         self.hud = HudNoche()
-        self.ambiente = sonido("atmo-public-supermarket-calm-cooling-shelf-switching-distant-01.wav",
-                               loop=True, volume=0.4)
-        self.musica_noche = sonido("25. Dark Factory.wav", loop=True, volume=0.45)
+        self.musica = sonido("atmo-public-supermarket-calm-cooling-shelf-switching-distant-01.wav",
+                             loop=True, volume=0.4)
         self.reset()
 
     def reset(self):
@@ -67,9 +66,8 @@ class NightDirector(Entity):
         self.awaken_timer = 2.0
         self.doors_open = False
         set_fog(NIEBLA_INICIO, NIEBLA_NORMAL)
-        self.musica_noche.stop()
-        self.ambiente.volume = 0.4
-        self.ambiente.play()
+        if not self.musica.playing:
+            self.musica.play()
         self.hud.show_message("", "", 0)
         self.hud.set_oscuridad(0)
 
@@ -101,8 +99,6 @@ class NightDirector(Entity):
             self.story = 2
             self.flicker = 2.5
             sfx.play("buzz", 0.8)
-            self.ambiente.fade_out(duration=2)
-            self.musica_noche.play()
             hud.show_message("MEDIANOCHE: LA COMIDA COBRO VIDA", "Sobrevive hasta las 06:00", 4, color.rgb32(255, 90, 70))
             set_fog(NIEBLA_INICIO / 2, NIEBLA_NOCHE)
         if self.minutes >= 360 and not self.doors_open:
